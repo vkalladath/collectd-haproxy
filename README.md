@@ -18,13 +18,8 @@ Options
 * `ProxyMonitor`  
 Proxy to monitor. If unset, defaults to ['server', 'frontend', 'backend'].
 Specify multiple times to specify additional proxies
-* `ProxyIgnore`  
-One or more Proxies to ignore
- Specify multiple times to specify additional proxies
-* `Socket`  
+* `Socket`
 File location of the HAProxy management socket
-* `Verbose`  
-Enable verbose logging
 
 Example
 -------
