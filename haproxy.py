@@ -83,6 +83,9 @@ METRIC_TYPES = {
     'comp_out': ('comp_out', 'derive'),
     'comp_byp': ('comp_byp', 'derive'),
     'comp_rsp': ('comp_rsp', 'derive'),
+    'qtime': ('queue_time_avg', 'gauge'),
+    'ctime': ('connect_time_avg', 'gauge'),
+    'rtime': ('response_time_avg', 'gauge'),
 }
 
 #Making sure that metrics names are case insensitive.
