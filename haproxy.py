@@ -172,7 +172,7 @@ def get_stats():
 
     for key, val in server_info.iteritems():
         try:
-            stats.append(key, int(val), None)
+            stats.append((key, int(val), None))
         except (TypeError, ValueError):
             pass
     for statdict in server_stats:
