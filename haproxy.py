@@ -158,7 +158,7 @@ def get_stats():
     if HAPROXY_SOCKET is None:
         collectd.error("Socket configuration parameter is undefined. Couldn't get the stats")
         return
-    stats = {}
+    stats = []
     haproxy = HAProxySocket(HAPROXY_SOCKET)
 
     try:
@@ -176,12 +176,11 @@ def get_stats():
         except (TypeError, ValueError):
             pass
     for statdict in server_stats:
-
         if not (statdict['svname'].lower() in PROXY_MONITORS or statdict['pxname'].lower() in PROXY_MONITORS):
               continue
         for metricname, val in statdict.items():
             try:
-                stats[metricname] = (int(val), {'proxy_name': statdict['pxname'], 'service_name': statdict['svname']})
+                stats.append((metricname, int(val), {'proxy_name': statdict['pxname'], 'service_name': statdict['svname']}))
             except (TypeError, ValueError):
                 pass
     return stats
@@ -238,8 +237,7 @@ def collect_metrics():
         collectd.warning('%s: No data received' % PLUGIN_NAME)
         return
 
-    for metric_name, value in info.iteritems():
-        metric_value, dimensions = value
+    for metric_name, metric_value, dimensions in info:
         if not metric_name.lower() in METRIC_TYPES:
             collectd.debug("Metric %s is not in the metric types" % metric_name)
             continue
