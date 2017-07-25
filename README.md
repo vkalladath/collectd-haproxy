@@ -23,8 +23,8 @@ File location of the HAProxy management socket
 
 Install
 -------
-1. Copy this repository to /usr/share/collectd/collectd-haproxy
-2. Create a collectd configuration for the plugin file in If you installed collectd using the signalfx installer, you should place your the haproxy configuration file in the /etc/collectd/managed_config directory.  See the Example configuration below.
+1. Copy this repository to `/usr/share/collectd/collectd-haproxy`
+2. Create a collectd configuration for the plugin file in If you installed collectd using the signalfx installer, you should place your the haproxy configuration file in the `/etc/collectd/managed_config/` directory.  See the example configuration below.
 3. `SELINUX ONLY` Create a SELinux policy package using the supplied type enforcement file.  Enter the commands below to create and install the policy package.
 ```bash 
 $ cd /usr/share/collectd/collectd-haproxy/selinux
@@ -52,7 +52,7 @@ Example
         Import "haproxy"
 
         <Module haproxy>
-          # Some versions of haproxy place the socket in "/var/lib/haproxy/stats"
+          # Some versions of haproxy expose the socket in "/var/lib/haproxy/stats"
           Socket "/var/run/haproxy.sock"
           ProxyMonitor "server"
           ProxyMonitor "backend"
