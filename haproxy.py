@@ -283,26 +283,29 @@ def config(config_values):
     """
 
     module_config = {}
-    opt_keys = ('Socket', 'ProxyMonitor', 'Interval', 'ExcludeMetric', 'EnhancedMetrics',)
     socket = DEFAULT_SOCKET
     proxy_monitors = []
     excluded_metrics = set()
     enhanced_metrics = False
     interval = DEFAULT_INTERVAL
+    testing = False
 
     for node in config_values.children:
-        if node.key in opt_keys and node.key == "ProxyMonitor":
+        if node.key == "ProxyMonitor" and node.values[0]:
             proxy_monitors.append(node.values[0])
-        elif node.key in opt_keys and node.key == "Socket":
+        elif node.key == "Socket" and node.values[0]:
             socket = node.values[0]
-        elif node.key in opt_keys and node.key == "Interval":
+        elif node.key == "Interval" and node.values[0]:
             interval = node.values[0]
-        elif node.key in opt_keys and node.key == "EnhancedMetrics":
+        elif node.key == "EnhancedMetrics" and node.values[0]:
             enhanced_metrics = _str_to_bool(node.values[0])
-        elif node.key in opt_keys and node.key == "ExcludeMetric":
+        elif node.key == "ExcludeMetric" and node.values[0]:
             excluded_metrics.add(node.values[0])
+        elif node.key == "Testing" and node.values[0]:
+            testing = _str_to_bool(node.values[0])
         else:
             collectd.warning('Unknown config key: %s' % node.key)
+
     if not proxy_monitors:
         proxy_monitors += DEFAULT_PROXY_MONITORS
 
@@ -312,8 +315,13 @@ def config(config_values):
         'interval': interval,
         'enhanced_metrics': enhanced_metrics,
         'excluded_metrics': excluded_metrics,
+        'testing': testing,
     }
     proxys = "_".join(proxy_monitors)
+    
+    if testing:
+        return module_config
+
     collectd.register_read(collect_metrics, interval,
                            data=module_config,
                            name='node_' + module_config['socket'] + '_' + proxys)
