@@ -379,7 +379,6 @@ def collect_metrics(module_config):
     for metric_name, metric_value, dimensions in info:
         # assert metric is in valid metrics lists
         if not metric_name.lower() in DEFAULT_METRICS and not metric_name.lower() in ENHANCED_METRICS:
-            collectd.warning("Metric %s is not in the returned metrics" % metric_name)
             continue
 
         # skip metrics in enhanced metrics mode if not enabled
