@@ -54,8 +54,12 @@ Example
         <Module haproxy>
           # Some versions of haproxy expose the socket in "/var/lib/haproxy/stats"
           Socket "/var/run/haproxy.sock"
+          Interval 10
+          EnhancedMetrics "False"
           ProxyMonitor "server"
           ProxyMonitor "backend"
+          # ExcludeMetric "requests"
+          # ExcludeMetric "session_limit"
         </Module>
     </Plugin>
 ```
