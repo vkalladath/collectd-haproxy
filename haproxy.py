@@ -219,7 +219,7 @@ def get_stats(module_config):
         server_stats = haproxy.get_server_stats()
     except socket.error:
         collectd.warning('status err Unable to connect to HAProxy socket at %s' % module_config['socket'])
-        return stat
+        return stats
 
     # server wide stats
     for key, val in server_info.iteritems():
@@ -318,7 +318,7 @@ def config(config_values):
         'testing': testing,
     }
     proxys = "_".join(proxy_monitors)
-    
+
     if testing:
         return module_config
 
