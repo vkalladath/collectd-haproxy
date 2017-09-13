@@ -112,7 +112,6 @@ ENHANCED_METRICS = {
 DIMENSIONS_LIST = [
     'pxname',
     'svname',
-    'weight',
     'pid',
     'sid',
     'iid',
@@ -129,8 +128,6 @@ METRIC_DELIM = '.'  # for the frontend/backend stats
 
 DEFAULT_SOCKET = '/var/run/haproxy.sock'
 DEFAULT_PROXY_MONITORS = ['server', 'frontend', 'backend']
-DEFAULT_INTERVAL = 10
-
 
 class HAProxySocket(object):
     """
@@ -287,7 +284,7 @@ def config(config_values):
     proxy_monitors = []
     excluded_metrics = set()
     enhanced_metrics = False
-    interval = DEFAULT_INTERVAL
+    interval = None
     testing = False
 
     for node in config_values.children:
@@ -322,9 +319,14 @@ def config(config_values):
     if testing:
         return module_config
 
-    collectd.register_read(collect_metrics, interval,
+    if interval is not None:
+        collectd.register_read(collect_metrics, interval,
                            data=module_config,
                            name='node_' + module_config['socket'] + '_' + proxys)
+    else:
+        collectd.register_read(collect_metrics, data=module_config,
+                           name='node_' + module_config['socket'] + '_' + proxys)
+
 
 
 def _format_dimensions(dimensions):
