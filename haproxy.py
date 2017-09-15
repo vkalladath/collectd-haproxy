@@ -129,6 +129,7 @@ METRIC_DELIM = '.'  # for the frontend/backend stats
 DEFAULT_SOCKET = '/var/run/haproxy.sock'
 DEFAULT_PROXY_MONITORS = ['server', 'frontend', 'backend']
 
+
 class HAProxySocket(object):
     """
             Encapsulates communication with HAProxy via the socket interface
@@ -228,8 +229,8 @@ def get_stats(module_config):
     # proxy specific stats
     for statdict in server_stats:
         dimensions = _build_dimension_dict(statdict)
-        if not (statdict['svname'] in module_config['proxy_monitors'] or
-                statdict['pxname'] in module_config['proxy_monitors']):
+        if not (statdict['svname'].lower() in module_config['proxy_monitors'] or
+                statdict['pxname'].lower() in module_config['proxy_monitors']):
             continue
         for metricname, val in statdict.items():
             try:
@@ -320,13 +321,11 @@ def config(config_values):
         return module_config
 
     if interval is not None:
-        collectd.register_read(collect_metrics, interval,
-                           data=module_config,
-                           name='node_' + module_config['socket'] + '_' + proxys)
+        collectd.register_read(collect_metrics, interval, data=module_config,
+                               name='node_' + module_config['socket'] + '_' + proxys)
     else:
         collectd.register_read(collect_metrics, data=module_config,
-                           name='node_' + module_config['socket'] + '_' + proxys)
-
+                               name='node_' + module_config['socket'] + '_' + proxys)
 
 
 def _format_dimensions(dimensions):
@@ -389,6 +388,7 @@ def collect_metrics(module_config):
     for metric_name, metric_value, dimensions in info:
         # assert metric is in valid metrics lists
         if not metric_name.lower() in DEFAULT_METRICS and not metric_name.lower() in ENHANCED_METRICS:
+            collectd.debug("metric %s is not in either metric list" % metric_name.lower())
             continue
 
         # skip metrics in enhanced metrics mode if not enabled
@@ -403,6 +403,7 @@ def collect_metrics(module_config):
 
         # skip over any exlcluded metrics
         if translated_metric_name in module_config['excluded_metrics']:
+            collectd.debug("excluding metric %s" % translated_metric_name)
             continue
 
         # create datapoint and dispatch
