@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - ubuntu:yakkety
+      - image: ubuntu:yakkety
     working_directory: ~/code
     steps:
       - setup_remote_docker
@@ -23,9 +23,8 @@ jobs:
             curl -L https://github.com/docker/compose/releases/download/1.11.2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
             chmod +x /usr/local/bin/docker-compose
       - checkout
-      # run tests
       - run:
-          name: run basic tests
+          name: Run basic tests
           working_directory: ~/code
           command: |
             pip install -r test_requirements.txt
