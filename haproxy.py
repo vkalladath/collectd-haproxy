@@ -222,7 +222,7 @@ def get_stats(module_config):
     # server wide stats
     for key, val in server_info.iteritems():
         try:
-            stats.append((key, int(val), None))
+            stats.append((key, int(val), dict()))
         except (TypeError, ValueError):
             pass
 
@@ -287,6 +287,7 @@ def config(config_values):
     enhanced_metrics = False
     interval = None
     testing = False
+    custom_dimensions = {}
 
     for node in config_values.children:
         if node.key == "ProxyMonitor" and node.values[0]:
@@ -301,6 +302,12 @@ def config(config_values):
             excluded_metrics.add(node.values[0])
         elif node.key == "Testing" and node.values[0]:
             testing = _str_to_bool(node.values[0])
+        elif node.key == 'Dimension':
+            if len(node.values) == 2:
+                custom_dimensions.update({node.values[0]: node.values[1]})
+            else:
+                collectd.warning("WARNING: Check configuration \
+                                            setting for %s" % node.key)
         else:
             collectd.warning('Unknown config key: %s' % node.key)
 
@@ -313,6 +320,7 @@ def config(config_values):
         'interval': interval,
         'enhanced_metrics': enhanced_metrics,
         'excluded_metrics': excluded_metrics,
+        'custom_dimensions': custom_dimensions,
         'testing': testing,
     }
     proxys = "_".join(proxy_monitors)
@@ -320,12 +328,12 @@ def config(config_values):
     if testing:
         return module_config
 
-    if interval is not None:
-        collectd.register_read(collect_metrics, interval, data=module_config,
-                               name='node_' + module_config['socket'] + '_' + proxys)
-    else:
-        collectd.register_read(collect_metrics, data=module_config,
-                               name='node_' + module_config['socket'] + '_' + proxys)
+    interval_kwarg = {}
+    if interval:
+        interval_kwarg['interval'] = interval
+    collectd.register_read(collect_metrics, data=module_config,
+                           name='node_' + module_config['socket'] + '_' + proxys,
+                           **interval_kwarg)
 
 
 def _format_dimensions(dimensions):
@@ -411,7 +419,8 @@ def collect_metrics(module_config):
         datapoint.type = val_type
         datapoint.type_instance = translated_metric_name
         datapoint.plugin = PLUGIN_NAME
-        if dimensions:
+        dimensions.update(module_config['custom_dimensions'])
+        if len(dimensions) > 0:
             datapoint.plugin_instance = _format_dimensions(dimensions)
         datapoint.values = (metric_value,)
         pprint_dict = {
