@@ -7,6 +7,12 @@
 # https://github.com/phrawzty/rabbitmq-collectd-plugin
 #
 # Modified by "Warren Turkal" <wt@signalfuse.com>, "Volodymyr Zhabiuk" <vzhabiuk@signalfx.com>
+#
+# Modified to read multiple haproxy stats sockets for nbproc > 1
+# Assumes the multiple sockets are exposed with a number in the socket name corresponding to the process number. 
+# The HARPOXY_SOCKET configuration should have a "#" character where the process number needs to be.
+# eg: /var/haproxy1.sock, /var/haproxy2.sock etc.
+#
 
 import cStringIO as StringIO
 import socket
@@ -95,8 +101,9 @@ METRIC_DELIM = '.'  # for the frontend/backend stats
 
 DEFAULT_SOCKET = '/var/lib/haproxy/stats'
 DEFAULT_PROXY_MONITORS = [ 'server', 'frontend', 'backend' ]
+HAPROXY_SOCKET = None
+NBPROC = 0
 
-CONFIGS = []
 
 class HAProxySocket(object):
     """
@@ -152,44 +159,53 @@ class HAProxySocket(object):
         result = [d.copy() for d in csvreader]
         return result
 
+def read_haproxy_stats(socket_name, stats, process):
+    haproxy = HAProxySocket(socket_name)
+    collectd.warning(socket_name)
+    try:
+        server_info = haproxy.get_server_info()
+        server_stats = haproxy.get_server_stats()
+    except socket.error:
+        collectd.warning(
+            'status err Unable to connect to HAProxy socket at %s' %
+            socket_name)
+        return stats
+
+    for key, val in server_info.iteritems():
+        try:
+            stats.append((key, int(val), None))
+        except (TypeError, ValueError):
+            pass
+    for statdict in server_stats:
+        if not (statdict['svname'].lower() in PROXY_MONITORS or statdict['pxname'].lower() in PROXY_MONITORS):
+              continue
+        for metricname, val in statdict.items():
+            try:
+                stats.append((metricname, int(val), {'proxy_name': statdict['pxname'], 'service_name': statdict['svname'], 'process': str(process)}))
+                #collectd.warning(socket_name + str(process))
+            except (TypeError, ValueError):
+                pass
 
 def get_stats():
     """
         Makes two calls to haproxy to fetch server info and server stats.
         Returns the dict containing metric name as the key and a tuple of metric value and the dict of dimensions if any
     """
+    if HAPROXY_SOCKET is None:
+        collectd.error("Socket configuration parameter is undefined. Couldn't get the stats")
+        return
     stats = []
-    for conf in CONFIGS:
-        if conf['haproxy_socket'] is None:
-            collectd.error("Socket configuration parameter is undefined. Couldn't get the stats")
-            continue
-        
-        haproxy = HAProxySocket(conf['haproxy_socket'])
-
-        try:
-            server_info = haproxy.get_server_info()
-            server_stats = haproxy.get_server_stats()
-        except socket.error:
-            collectd.warning(
-                'status err Unable to connect to HAProxy socket at %s' %
-                conf['haproxy_socket'])
-            continue
-
-        for key, val in server_info.iteritems():
-            try:
-                stats.append((key, int(val), None))
-            except (TypeError, ValueError):
-                pass
-        for statdict in server_stats:
-            if not (statdict['svname'].lower() in conf['proxy_monitors'] or statdict['pxname'].lower() in conf['proxy_monitors']):
-                  continue
-            for metricname, val in statdict.items():
-                try:
-                    stats.append((metricname, int(val), {'proxy_name': statdict['pxname'], 'service_name': statdict['svname'], 'process': conf['haproxy_process']}))
-                except (TypeError, ValueError):
-                    pass
+    
+    if NBPROC > 1:
+        for process in xrange(1, NBPROC + 1):
+            socket_name = HAPROXY_SOCKET.replace("#", str(process))
+            collectd.warning(socket_name)
+            read_haproxy_stats(socket_name, stats, process)
+    else:
+        collectd.warning( str(type(NBPROC)))
+        collectd.warning(str(NBPROC))
+        read_haproxy_stats(HAPROXY_SOCKET, stats, 0)
     return stats
-
 
 def config(config_values):
     """
@@ -198,26 +214,25 @@ def config(config_values):
     config_values (collectd.Config): Object containing config values
     """
 
-    proxy_monitors = [ ]
-    haproxy_socket = DEFAULT_SOCKET
-    haproxy_process = 1
+    global PROXY_MONITORS, HAPROXY_SOCKET, NBPROC
+    PROXY_MONITORS = [ ]
+    HAPROXY_SOCKET = DEFAULT_SOCKET
     for node in config_values.children:
+        collectd.warning(node.key)
+        collectd.warning(str(node.values[0]))
         if node.key == "ProxyMonitor":
-              proxy_monitors.append(node.values[0].lower())
+              PROXY_MONITORS.append(node.values[0].lower())
         elif  node.key == "Socket":
-            haproxy_socket = node.values[0]
-        elif  node.key == "Process":
-            haproxy_process = node.values[0]
+            HAPROXY_SOCKET = node.values[0]
+        elif  node.key == "nbproc":
+            NBPROC = int(node.values[0])
+            collectd.warning(str(NBPROC))
         else:
             collectd.warning('Unknown config key: %s' % node.key)
-    if not proxy_monitors:
-        proxy_monitors += DEFAULT_PROXY_MONITORS
-    proxy_monitors = [ p.lower() for p in proxy_monitors ]
-    CONFIGS.append({
-        'proxy_monitors': proxy_monitors,
-        'haproxy_socket': haproxy_socket,
-        'haproxy_process': haproxy_process
-    })
+    if not PROXY_MONITORS:
+        PROXY_MONITORS += DEFAULT_PROXY_MONITORS
+    PROXY_MONITORS = [ p.lower() for p in PROXY_MONITORS ]
+
 
 def _format_dimensions(dimensions):
     """
